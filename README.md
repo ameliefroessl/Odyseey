@@ -97,6 +97,12 @@ That checks:
 - `ODYSSEY_KEY` as an optional alias
 - `ODYSSEY_OPENAI_KEY` as an optional alias
 - `ODYSSEY_CLAUDE_KEY` as an optional alias
+- `ODYSSEY_AUTOREPLY_ENABLED`
+- `ODYSSEY_AUTOREPLY_TRIP_ID` optional filter
+- `ODYSSEY_AUTOREPLY_TRIP_TITLE` optional filter
+- `ODYSSEY_AUTOREPLY_PERSONA` defaults to `Codex`
+- `ODYSSEY_AUTOREPLY_POLL_SECONDS` defaults to `3`
+- `ODYSSEY_AUTOREPLY_HISTORY_LIMIT` defaults to `20`
 
 ## Contracts and setup
 
@@ -170,4 +176,41 @@ The bridge formats the final message content as:
 
 ```text
 [Codex] I found three strong flight options.
+```
+
+## Always-On Codex Auto-Reply
+
+If you want this backend to stay up and automatically answer new user messages
+that appear inside Odyssey, start it with auto-reply enabled:
+
+```bash
+cd "/Users/eltsit/Documents/New project/Odyseey"
+ODYSSEY_KEY=your_key_here \
+ODYSSEY_AUTOREPLY_ENABLED=true \
+HOST=127.0.0.1 PORT=8015 \
+../.venv/bin/python -m app.server
+```
+
+With no trip filter set, the watcher polls every Odyssey trip that the API key
+can access and replies as that identity.
+
+If you want to pin it to one specific remote trip instead:
+
+```bash
+ODYSSEY_AUTOREPLY_TRIP_ID=your_trip_id
+```
+
+Or filter by exact title:
+
+```bash
+ODYSSEY_AUTOREPLY_TRIP_TITLE="Codex Trip"
+```
+
+The watcher polls Odyssey for new remote user messages and posts an assistant
+reply back with the configured persona prefix.
+
+You can inspect watcher state at:
+
+```text
+GET /api/integrations/odyssey/watcher
 ```

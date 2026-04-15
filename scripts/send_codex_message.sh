@@ -3,8 +3,14 @@
 set -euo pipefail
 
 BASE_URL="${BASE_URL:-http://127.0.0.1:8000}"
-TRIP_ID="${TRIP_ID:-${1:-}}"
 PERSONA="${PERSONA:-Codex}"
+TRIP_ID="${TRIP_ID:-}"
+USED_TRIP_ARG=0
+
+if [[ -z "$TRIP_ID" && $# -gt 0 ]]; then
+  TRIP_ID="$1"
+  USED_TRIP_ARG=1
+fi
 
 if [[ -n "${ODYSSEY_KEY:-}" && -z "${ODYSSEY_API_KEY:-}" ]]; then
   export ODYSSEY_API_KEY="$ODYSSEY_KEY"
@@ -23,7 +29,10 @@ if [[ -z "$TRIP_ID" ]]; then
   exit 1
 fi
 
-shift $(( $# > 0 ? 1 : 0 )) || true
+if [[ "$USED_TRIP_ARG" -eq 1 ]]; then
+  shift
+fi
+
 CONTENT="${CONTENT:-$*}"
 
 if [[ -z "$CONTENT" ]]; then

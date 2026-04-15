@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from .config import settings
@@ -50,6 +51,21 @@ BUDGET_KEYWORDS = {
     "splurge",
 }
 
+MONTH_NAMES = {
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+}
+
 
 def build_input(trip: Trip, messages: list[TripMessage]) -> list[dict[str, Any]]:
     trip_context = {
@@ -75,7 +91,12 @@ def build_input(trip: Trip, messages: list[TripMessage]) -> list[dict[str, Any]]
         input_items.append(
             {
                 "role": message.role,
-                "content": [{"type": "input_text", "text": message.content}],
+                "content": [
+                    {
+                        "type": "output_text" if message.role == "assistant" else "input_text",
+                        "text": message.content,
+                    }
+                ],
             }
         )
     return input_items
@@ -92,67 +113,47 @@ def _generate_reply_with_openai(trip: Trip, messages: list[TripMessage]) -> dict
 
     client = OpenAI(api_key=settings.openai_api_key)
     input_items = build_input(trip, messages)
-    tool_messages: list[dict[str, Any]] = []
-
-    while True:
-        response = client.responses.create(
-            model=settings.openai_model,
-            input=input_items,
-            tools=tool_definitions(),
-        )
-        function_calls = [item for item in response.output if item.type == "function_call"]
-        if not function_calls:
-            return {
-                "assistant_text": response.output_text,
-                "tool_messages": tool_messages,
-            }
-
-        for call in function_calls:
-            args = json.loads(call.arguments)
-            output = execute_tool(call.name, args)
-            tool_messages.append(
-                {
-                    "content": output,
-                    "tool_name": call.name,
-                    "tool_call_id": call.call_id,
-                    "metadata": {"arguments": args},
-                }
-            )
-            input_items.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": call.call_id,
-                    "output": output,
-                }
-            )
+    response = client.responses.create(
+        model=settings.openai_model,
+        input=input_items,
+    )
+    return {
+        "assistant_text": response.output_text,
+        "tool_messages": [],
+    }
 
 
 def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[str, Any]:
     latest_user = next((message for message in reversed(messages) if message.role == "user"), None)
     prompt = latest_user.content if latest_user else ""
-    lowered = prompt.lower()
+    user_messages = [message.content for message in messages if message.role == "user"]
+    combined_user_text = " ".join(user_messages)
+    combined_lowered = combined_user_text.lower()
+
+    inferred_destination = trip.destination or _extract_destination_from_messages(user_messages)
+    inferred_origin = _extract_origin_from_messages(user_messages)
+    has_dates = bool(trip.start_date and trip.end_date) or _has_date_context(combined_lowered)
+    has_activities = any(keyword in combined_lowered for keyword in INTEREST_KEYWORDS)
+    has_budget = any(keyword in combined_lowered for keyword in BUDGET_KEYWORDS)
 
     missing = []
-    if not trip.destination:
+    if not inferred_destination:
         missing.append("destination")
-    if not trip.start_date or not trip.end_date:
+    if not has_dates:
         missing.append("dates")
-    if "from " not in lowered and "flying from" not in lowered:
+    if not inferred_origin:
         missing.append("origin")
-    if not any(keyword in lowered for keyword in INTEREST_KEYWORDS):
+    if not has_activities:
         missing.append("activities")
-    if not any(keyword in lowered for keyword in BUDGET_KEYWORDS):
+    if not has_budget:
         missing.append("budget")
 
     if missing:
-        prompts = {
-            "destination": "Where are you headed?",
-            "dates": "What dates are you considering?",
-            "origin": "Where are you flying from?",
-            "activities": "What do you actually want to do on this trip?",
-            "budget": "What budget are we pretending is reasonable here?",
-        }
-        question_text = " ".join(prompts[item] for item in missing[:3])
+        question_text = _build_missing_details_reply(
+            missing=missing,
+            latest_user_text=prompt,
+            inferred_destination=inferred_destination,
+        )
         return {
             "assistant_text": question_text,
             "tool_messages": [],
@@ -161,8 +162,8 @@ def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[s
     tool_messages: list[dict[str, Any]] = []
 
     flight_data = search_flights(
-        origin=_extract_origin(prompt) or "San Francisco",
-        destination=trip.destination or "Tokyo",
+        origin=inferred_origin or "San Francisco",
+        destination=inferred_destination or "Tokyo",
         month=trip.start_date.strftime("%B") if trip.start_date else "March",
         travelers=1,
     )
@@ -177,7 +178,7 @@ def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[s
     )
 
     hotel_data = lookup_hotel(
-        city=trip.destination or "Tokyo",
+        city=inferred_destination or "Tokyo",
         check_in=trip.start_date.isoformat() if trip.start_date else "2026-03-10",
         nights=_night_count(trip),
         rooms=1,
@@ -193,7 +194,7 @@ def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[s
     )
 
     weather_data = get_weather(
-        location=trip.destination or "Tokyo",
+        location=inferred_destination or "Tokyo",
         timeframe=(
             f"{trip.start_date.isoformat()} to {trip.end_date.isoformat()}"
             if trip.start_date and trip.end_date
@@ -216,7 +217,7 @@ def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[s
     plan_data = update_trip_plan(
         title=trip.title,
         summary=(
-            f"Built a first-pass plan for {trip.destination or 'the destination'} with a cheaper flight angle, "
+            f"Built a first-pass plan for {inferred_destination or 'the destination'} with a cheaper flight angle, "
             f"a sane hotel option, and weather notes so nobody packs like an optimist."
         ),
         next_step="Confirm total budget, deal-breakers, and whether you want cheapest or least painful.",
@@ -233,7 +234,7 @@ def _generate_reply_with_mock(trip: Trip, messages: list[TripMessage]) -> dict[s
 
     return {
         "assistant_text": _build_mock_summary(
-            destination=trip.destination or "your destination",
+            destination=inferred_destination or "your destination",
             cheapest_flight=cheapest_flight,
             best_value_hotel=best_value_hotel,
             weather_data=weather_data,
@@ -252,6 +253,93 @@ def _extract_origin(text: str) -> str | None:
     if not remainder:
         return None
     return remainder.split(",")[0].split(" and ")[0].split(" to ")[0].strip().title()
+
+
+def _extract_origin_from_messages(messages: list[str]) -> str | None:
+    for message in reversed(messages):
+        origin = _extract_origin(message)
+        if origin:
+            return origin
+    return None
+
+
+def _extract_destination_from_messages(messages: list[str]) -> str | None:
+    for message in reversed(messages):
+        destination = _extract_destination(message)
+        if destination:
+            return destination
+    return None
+
+
+def _extract_destination(text: str) -> str | None:
+    cleaned = text.strip().strip(".!?")
+    lowered = cleaned.lower()
+    patterns = [
+        r"\bheaded to\s+([a-zA-Z][a-zA-Z\s,.-]+)$",
+        r"\bgoing to\s+([a-zA-Z][a-zA-Z\s,.-]+)$",
+        r"\btraveling to\s+([a-zA-Z][a-zA-Z\s,.-]+)$",
+        r"\bvisiting\s+([a-zA-Z][a-zA-Z\s,.-]+)$",
+        r"\bdestination is\s+([a-zA-Z][a-zA-Z\s,.-]+)$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, lowered)
+        if match:
+            return _normalize_place_name(match.group(1))
+
+    # Treat short location-only answers like "greece" or "athens, greece" as destination clues.
+    if (
+        cleaned
+        and len(cleaned.split()) <= 4
+        and not _has_date_context(lowered)
+        and not _extract_origin(cleaned)
+        and not any(keyword in lowered for keyword in INTEREST_KEYWORDS | BUDGET_KEYWORDS)
+        and re.fullmatch(r"[A-Za-z][A-Za-z\s,.-]*", cleaned) is not None
+    ):
+        return _normalize_place_name(cleaned)
+
+    return None
+
+
+def _normalize_place_name(value: str) -> str:
+    parts = [part.strip() for part in value.split(",") if part.strip()]
+    if not parts:
+        return value.strip().title()
+    return ", ".join(part.title() for part in parts)
+
+
+def _has_date_context(text: str) -> bool:
+    if any(month in text for month in MONTH_NAMES):
+        return True
+    if re.search(r"\b20\d{2}-\d{2}-\d{2}\b", text):
+        return True
+    if re.search(r"\b\d{1,2}/\d{1,2}(?:/\d{2,4})?\b", text):
+        return True
+    if re.search(r"\b\d{1,2}\s*-\s*\d{1,2}\b", text):
+        return True
+    return False
+
+
+def _build_missing_details_reply(
+    *,
+    missing: list[str],
+    latest_user_text: str,
+    inferred_destination: str | None,
+) -> str:
+    prompts = {
+        "destination": "Where are you headed?",
+        "dates": "What dates are you considering?",
+        "origin": "Where are you flying from?",
+        "activities": "What do you actually want to do on this trip?",
+        "budget": "What budget are we pretending is reasonable here?",
+    }
+    questions = [prompts[item] for item in missing[:2]]
+
+    if inferred_destination and _extract_destination(latest_user_text):
+        if questions:
+            return f"Got it, {inferred_destination}. {' '.join(questions)}"
+        return f"Got it, {inferred_destination}."
+
+    return " ".join(questions)
 
 
 def _night_count(trip: Trip) -> int:

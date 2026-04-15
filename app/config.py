@@ -38,6 +38,12 @@ class Settings:
         or os.getenv("ODYSSEY_OPENAI_KEY")
         or os.getenv("ODYSSEY_CLAUDE_KEY")
     )
+    odyssey_autoreply_enabled: bool = _as_bool(os.getenv("ODYSSEY_AUTOREPLY_ENABLED"))
+    odyssey_autoreply_trip_id: str | None = os.getenv("ODYSSEY_AUTOREPLY_TRIP_ID")
+    odyssey_autoreply_trip_title: str | None = os.getenv("ODYSSEY_AUTOREPLY_TRIP_TITLE")
+    odyssey_autoreply_persona: str = os.getenv("ODYSSEY_AUTOREPLY_PERSONA", "Codex")
+    odyssey_autoreply_poll_seconds: float = float(os.getenv("ODYSSEY_AUTOREPLY_POLL_SECONDS", "3"))
+    odyssey_autoreply_history_limit: int = int(os.getenv("ODYSSEY_AUTOREPLY_HISTORY_LIMIT", "20"))
 
 
 def cors_config() -> dict[str, object]:

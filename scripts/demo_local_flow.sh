@@ -23,7 +23,7 @@ echo
 
 echo "==> Posting user message"
 POST_RESPONSE="$(curl -fsS \
-  -X POST "$BASE_URL/api/trips/$TRIP_ID/messages" \
+  -X POST "$BASE_URL/api/trips/$TRIP_ID/messages?wait=false" \
   -H "Content-Type: application/json" \
   -d "$(printf '{"content":"%s","role":"user"}' "$PROMPT")")"
 echo "$POST_RESPONSE"

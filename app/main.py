@@ -15,6 +15,7 @@ from .models import (
     TripResponse,
 )
 from .odyssey_client import OdysseyAPIError, create_odyssey_client
+from .odyssey_watcher import OdysseyAutoReplyWatcher
 from .storage import create_storage
 
 app = FastAPI(title="Odyseey Trip API", version="0.2.0")
@@ -24,6 +25,17 @@ app.add_middleware(
 )
 
 storage = create_storage()
+odyssey_watcher = OdysseyAutoReplyWatcher()
+
+
+@app.on_event("startup")
+def startup() -> None:
+    odyssey_watcher.start()
+
+
+@app.on_event("shutdown")
+def shutdown() -> None:
+    odyssey_watcher.stop()
 
 
 @app.get("/")
@@ -182,6 +194,28 @@ def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str,
         "provider": "odyssey",
         "trip_id": trip_id,
         "message": result,
+    }
+
+
+@app.get("/api/integrations/odyssey/watcher")
+def odyssey_watcher_status() -> dict[str, object]:
+    status = odyssey_watcher.status()
+    return {
+        "provider": "odyssey",
+        "watcher": {
+            "enabled": status.enabled,
+            "running": status.running,
+            "trip_count": status.trip_count,
+            "trip_ids": status.trip_ids,
+            "trip_titles": status.trip_titles,
+            "filter_trip_id": status.filter_trip_id,
+            "filter_trip_title": status.filter_trip_title,
+            "last_handled_user_ids": status.last_handled_user_ids,
+            "last_reply_preview": status.last_reply_preview,
+            "last_error": status.last_error,
+            "poll_seconds": settings.odyssey_autoreply_poll_seconds,
+            "persona": settings.odyssey_autoreply_persona,
+        },
     }
 
 
