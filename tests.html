@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Sprint Smoke Test</title>
+    <style>
+      body {
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        margin: 32px;
+        line-height: 1.5;
+        color: #2c241a;
+      }
+
+      .pass {
+        color: #0d7a63;
+      }
+
+      .fail {
+        color: #a43e33;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Agent Sprint Smoke Test</h1>
+    <p>Start <code>node server.mjs</code> before opening this page.</p>
+    <ul id="results"></ul>
+
+    <script type="module">
+      const results = document.querySelector("#results");
+      const tests = [
+        [
+          "health endpoint responds",
+          async () => {
+            const response = await fetch("/api/health");
+            const payload = await response.json();
+            assert(response.ok, "Health request failed");
+            assert(payload.status === "ok", "Unexpected health status");
+          },
+        ],
+        [
+          "creating a run returns queued or running status",
+          async () => {
+            const response = await fetch("/api/runs", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                prompt: "Draft a tiny launch plan for an AI note app",
+                user: "smoke-test",
+              }),
+            });
+            const payload = await response.json();
+            assert(response.ok, "Run creation failed");
+            assert(payload.run.id, "Run id missing");
+            assert(["queued", "running"].includes(payload.run.status));
+          },
+        ],
+      ];
+
+      let failures = 0;
+
+      for (const [name, run] of tests) {
+        const item = document.createElement("li");
+
+        try {
+          await run();
+          item.textContent = `PASS: ${name}`;
+          item.className = "pass";
+        } catch (error) {
+          failures += 1;
+          item.textContent = `FAIL: ${name} — ${error.message}`;
+          item.className = "fail";
+        }
+
+        results.append(item);
+      }
+
+      if (failures === 0) {
+        const summary = document.createElement("p");
+        summary.textContent = "All smoke checks passed.";
+        summary.className = "pass";
+        document.body.append(summary);
+      }
+
+      function assert(condition, message = "Assertion failed") {
+        if (!condition) {
+          throw new Error(message);
+        }
+      }
+    </script>
+  </body>
+</html>

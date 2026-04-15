@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Agent Sprint</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero" aria-labelledby="app-title">
+        <p class="eyebrow">Hackathon MVP</p>
+        <h1 id="app-title">Agent Sprint</h1>
+        <p class="hero-copy">
+          A tiny Lovable-style frontend with one minimal backend and
+          Supabase-ready storage.
+        </p>
+        <div class="hero-meta">
+          <div class="pill">
+            <span class="pill-label">Backend</span>
+            <strong id="backend-mode">Loading...</strong>
+          </div>
+          <div class="pill">
+            <span class="pill-label">Status</span>
+            <strong id="health-status">Checking...</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel composer-panel" aria-labelledby="composer-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Run Agent</p>
+            <h2 id="composer-title">Start a job</h2>
+          </div>
+          <button id="refresh-button" class="button secondary" type="button">
+            Refresh runs
+          </button>
+        </div>
+
+        <form id="run-form" class="composer-form">
+          <label class="field">
+            <span>What should the agent do?</span>
+            <textarea
+              id="prompt-input"
+              name="prompt"
+              rows="5"
+              placeholder="Example: Research three launch ideas for an AI study tool and suggest the quickest one to demo."
+              required
+            ></textarea>
+          </label>
+
+          <label class="field">
+            <span>Optional user name</span>
+            <input
+              id="user-input"
+              name="user"
+              type="text"
+              maxlength="60"
+              placeholder="demo-user"
+            />
+          </label>
+
+          <div class="actions">
+            <button id="submit-button" class="button" type="submit">
+              Start agent run
+            </button>
+            <p id="form-status" class="inline-status" role="status"></p>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel runs-panel" aria-labelledby="runs-title">
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">Agent Runs</p>
+            <h2 id="runs-title">Recent jobs</h2>
+          </div>
+        </div>
+
+        <div id="empty-state" class="empty-state">
+          No runs yet. Start one above to test the stack.
+        </div>
+        <div id="runs-list" class="runs-list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <template id="run-template">
+      <article class="run-card">
+        <header class="run-card-header">
+          <div>
+            <p class="run-title"></p>
+            <p class="run-meta"></p>
+          </div>
+          <span class="run-badge"></span>
+        </header>
+        <p class="run-prompt"></p>
+        <div class="run-output"></div>
+      </article>
+    </template>
+
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>

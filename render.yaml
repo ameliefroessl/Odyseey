@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: agent-sprint-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.server
+    autoDeploy: true
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 8000
+      - key: OPENAI_MODEL
+        value: gpt-5
+      - key: CORS_ORIGINS
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_SESSIONS_TABLE
+        value: agent_sessions
+      - key: SUPABASE_MESSAGES_TABLE
+        value: agent_messages
