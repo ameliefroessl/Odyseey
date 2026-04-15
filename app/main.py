@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import generate_reply
@@ -8,9 +8,9 @@ from .config import cors_config, settings
 from .models import (
     CreateTripRequest,
     HealthResponse,
+    MessageAcceptedResponse,
     MessageListResponse,
     SendMessageRequest,
-    SendMessageResponse,
     TripListResponse,
     TripResponse,
 )
@@ -70,15 +70,29 @@ def get_trip(trip_id: str) -> TripResponse:
 
 
 @app.get("/api/trips/{trip_id}/messages", response_model=MessageListResponse)
-def list_messages(trip_id: str) -> MessageListResponse:
+def list_messages(
+    trip_id: str,
+    last: bool = Query(default=False),
+    limit: int | None = Query(default=None, ge=1, le=200),
+) -> MessageListResponse:
     trip = storage.get_trip(trip_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Trip not found.")
-    return MessageListResponse(messages=storage.list_messages(trip_id))
+    messages = storage.list_messages(trip_id)
+    if limit is not None:
+        messages = messages[-limit:]
+    last_message = messages[-1] if messages else None
+    if last:
+        messages = [last_message] if last_message is not None else []
+    return MessageListResponse(messages=messages, last_message=last_message)
 
 
-@app.post("/api/trips/{trip_id}/messages", response_model=SendMessageResponse)
-def send_message(trip_id: str, payload: SendMessageRequest) -> SendMessageResponse:
+@app.post("/api/trips/{trip_id}/messages", response_model=MessageAcceptedResponse, status_code=202)
+def send_message(
+    trip_id: str,
+    payload: SendMessageRequest,
+    background_tasks: BackgroundTasks,
+) -> MessageAcceptedResponse:
     trip = storage.get_trip(trip_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Trip not found.")
@@ -89,33 +103,15 @@ def send_message(trip_id: str, payload: SendMessageRequest) -> SendMessageRespon
         content=payload.content,
     )
 
-    history = storage.list_messages(trip_id)
-    agent_result = generate_reply(trip, history)
-
-    tool_messages = [
-        storage.create_message(
-            trip_id=trip_id,
-            role="tool",
-            content=item["content"],
-            tool_name=item["tool_name"],
-            tool_call_id=item["tool_call_id"],
-            metadata=item.get("metadata", {}),
-        )
-        for item in agent_result["tool_messages"]
-    ]
-
-    assistant_message = storage.create_message(
-        trip_id=trip_id,
-        role="assistant",
-        content=agent_result["assistant_text"],
-    )
+    if payload.role == "user":
+        background_tasks.add_task(process_agent_turn, trip_id)
 
     refreshed_trip = storage.get_trip(trip_id) or trip
-    return SendMessageResponse(
+    return MessageAcceptedResponse(
         trip=refreshed_trip,
         user_message=user_message,
-        assistant_message=assistant_message,
-        tool_messages=tool_messages,
+        status="queued" if payload.role == "user" else "stored",
+        poll_path=f"/api/trips/{trip_id}/messages?last=true",
     )
 
 
@@ -164,3 +160,36 @@ def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str,
         "trip_id": trip_id,
         "message": result,
     }
+
+
+def process_agent_turn(trip_id: str) -> None:
+    trip = storage.get_trip(trip_id)
+    if trip is None:
+        return
+
+    try:
+        history = storage.list_messages(trip_id)
+        agent_result = generate_reply(trip, history)
+
+        for item in agent_result["tool_messages"]:
+            storage.create_message(
+                trip_id=trip_id,
+                role="tool",
+                content=item["content"],
+                tool_name=item["tool_name"],
+                tool_call_id=item["tool_call_id"],
+                metadata=item.get("metadata", {}),
+            )
+
+        storage.create_message(
+            trip_id=trip_id,
+            role="assistant",
+            content=agent_result["assistant_text"],
+        )
+    except Exception as exc:
+        storage.create_message(
+            trip_id=trip_id,
+            role="assistant",
+            content="I hit an error while processing that request. Please try again.",
+            metadata={"error": True, "detail": str(exc)},
+        )

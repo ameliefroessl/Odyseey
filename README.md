@@ -100,3 +100,12 @@ That checks:
 - Odyssey UI can keep using Supabase for trip CRUD if that is already live.
 - The trip chat/assistant should call this API.
 - If needed, this API can also proxy the hosted Odyssey trip-message endpoints.
+
+## Polling pattern
+
+The local trip API is polling-friendly:
+
+1. `POST /api/trips/{trip_id}/messages`
+2. backend stores the user message and returns `202 Accepted`
+3. UI polls `GET /api/trips/{trip_id}/messages?last=true`
+4. when the latest assistant message appears, UI updates the chat

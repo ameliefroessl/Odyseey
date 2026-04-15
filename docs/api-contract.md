@@ -99,9 +99,14 @@ Returns one trip.
 
 Returns the chat history for the trip.
 
+Optional query:
+
+- `last=true`
+- `limit=1..200`
+
 ### `POST /api/trips/:trip_id/messages`
 
-Adds a user message, runs the agent, and returns the assistant/tool outputs.
+Stores a new message and queues agent processing for polling-based UIs.
 
 Request body:
 
@@ -135,17 +140,8 @@ Response shape:
     "metadata": {},
     "created_at": "2026-04-15T18:41:00Z"
   },
-  "assistant_message": {
-    "id": "msg_assistant",
-    "trip_id": "trip_123",
-    "role": "assistant",
-    "content": "Where are you flying from, and what do you want to do on this trip?",
-    "tool_name": null,
-    "tool_call_id": null,
-    "metadata": {},
-    "created_at": "2026-04-15T18:42:11Z"
-  },
-  "tool_messages": []
+  "status": "queued",
+  "poll_path": "/api/trips/trip_123/messages?last=true"
 }
 ```
 
@@ -155,9 +151,8 @@ Response shape:
 2. UI opens the trip page.
 3. UI calls `GET /api/trips/{trip_id}/messages`.
 4. On send, UI calls `POST /api/trips/{trip_id}/messages`.
-5. UI renders:
-   - `assistant_message`
-   - optionally `tool_messages` in a debug panel
+5. UI polls `GET /api/trips/{trip_id}/messages?last=true`.
+6. When a new assistant message appears, UI stops polling.
 
 ## Optional Odyssey bridge
 

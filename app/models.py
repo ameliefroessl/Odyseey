@@ -53,6 +53,7 @@ class TripResponse(BaseModel):
 
 class MessageListResponse(BaseModel):
     messages: list[TripMessage]
+    last_message: TripMessage | None = None
 
 
 class SendMessageRequest(BaseModel):
@@ -60,11 +61,11 @@ class SendMessageRequest(BaseModel):
     role: MessageRole = "user"
 
 
-class SendMessageResponse(BaseModel):
+class MessageAcceptedResponse(BaseModel):
     trip: Trip
     user_message: TripMessage
-    assistant_message: TripMessage
-    tool_messages: list[TripMessage] = Field(default_factory=list)
+    status: str = "queued"
+    poll_path: str
 
 
 class HealthResponse(BaseModel):
