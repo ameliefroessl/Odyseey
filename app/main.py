@@ -100,7 +100,8 @@ def send_message(
     user_message = storage.create_message(
         trip_id=trip_id,
         role=payload.role,
-        content=payload.content,
+        content=_format_outbound_content(payload),
+        metadata={"persona": payload.persona} if payload.persona else {},
     )
 
     if payload.role == "user":
@@ -152,7 +153,11 @@ def odyssey_messages(
 def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str, object]:
     try:
         client = create_odyssey_client()
-        result = client.create_message(trip_id, content=payload.content, role=payload.role)
+        result = client.create_message(
+            trip_id,
+            content=_format_outbound_content(payload),
+            role=payload.role,
+        )
     except OdysseyAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {
@@ -193,3 +198,9 @@ def process_agent_turn(trip_id: str) -> None:
             content="I hit an error while processing that request. Please try again.",
             metadata={"error": True, "detail": str(exc)},
         )
+
+
+def _format_outbound_content(payload: SendMessageRequest) -> str:
+    if payload.role == "assistant" and payload.persona:
+        return f"[{payload.persona}] {payload.content}"
+    return payload.content

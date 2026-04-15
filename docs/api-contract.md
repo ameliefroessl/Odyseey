@@ -178,6 +178,8 @@ Request body:
 
 ```json
 {
-  "content": "What restaurants should we try?"
+  "content": "What restaurants should we try?",
+  "role": "assistant",
+  "persona": "Codex"
 }
 ```

@@ -60,6 +60,14 @@ The script also accepts the alias some teammates are using:
 export ODYSSEY_KEY=your_key_here
 ```
 
+It also accepts provider-specific aliases:
+
+```bash
+export ODYSSEY_OPENAI_KEY=your_key_here
+# or
+export ODYSSEY_CLAUDE_KEY=your_key_here
+```
+
 That checks:
 
 - local API health
@@ -87,6 +95,8 @@ That checks:
 - `ODYSSEY_BASE_URL`
 - `ODYSSEY_API_KEY`
 - `ODYSSEY_KEY` as an optional alias
+- `ODYSSEY_OPENAI_KEY` as an optional alias
+- `ODYSSEY_CLAUDE_KEY` as an optional alias
 
 ## Contracts and setup
 
@@ -109,3 +119,26 @@ The local trip API is polling-friendly:
 2. backend stores the user message and returns `202 Accepted`
 3. UI polls `GET /api/trips/{trip_id}/messages?last=true`
 4. when the latest assistant message appears, UI updates the chat
+
+## Sending Assistant Messages As Codex
+
+If you want this backend to post assistant-role messages into Odyssey on behalf
+of Codex or another persona, use:
+
+```bash
+cd "/Users/eltsit/Documents/New project/Odyseey"
+export ODYSSEY_OPENAI_KEY=your_key_here
+export TRIP_ID=your_trip_id
+PERSONA=Codex bash scripts/send_codex_message.sh "I found three strong flight options."
+```
+
+That sends:
+
+- `role: "assistant"`
+- `persona: "Codex"`
+
+The bridge formats the final message content as:
+
+```text
+[Codex] I found three strong flight options.
+```

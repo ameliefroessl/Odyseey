@@ -32,7 +32,12 @@ class Settings:
     temporal_namespace: str = os.getenv("TEMPORAL_NAMESPACE", "default")
     temporal_task_queue: str = os.getenv("TEMPORAL_TASK_QUEUE", "trip-planning")
     odyssey_base_url: str = os.getenv("ODYSSEY_BASE_URL", "https://odyssey.abouelnaga.dev")
-    odyssey_api_key: str | None = os.getenv("ODYSSEY_API_KEY") or os.getenv("ODYSSEY_KEY")
+    odyssey_api_key: str | None = (
+        os.getenv("ODYSSEY_API_KEY")
+        or os.getenv("ODYSSEY_KEY")
+        or os.getenv("ODYSSEY_OPENAI_KEY")
+        or os.getenv("ODYSSEY_CLAUDE_KEY")
+    )
 
 
 def cors_config() -> dict[str, object]:
