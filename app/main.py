@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import generate_reply
@@ -14,6 +14,7 @@ from .models import (
     TripListResponse,
     TripResponse,
 )
+from .odyssey_client import OdysseyAPIError, create_odyssey_client
 from .storage import create_storage
 
 app = FastAPI(title="Odyseey Trip API", version="0.2.0")
@@ -116,3 +117,32 @@ def send_message(trip_id: str, payload: SendMessageRequest) -> SendMessageRespon
         assistant_message=assistant_message,
         tool_messages=tool_messages,
     )
+
+
+@app.get("/api/integrations/odyssey/trips/{trip_id}/messages")
+def odyssey_messages(trip_id: str, last: bool = Query(default=False)) -> dict[str, object]:
+    try:
+        client = create_odyssey_client()
+        messages = client.list_messages(trip_id, last=last)
+    except OdysseyAPIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {
+        "provider": "odyssey",
+        "trip_id": trip_id,
+        "last": last,
+        "messages": messages,
+    }
+
+
+@app.post("/api/integrations/odyssey/trips/{trip_id}/messages")
+def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str, object]:
+    try:
+        client = create_odyssey_client()
+        result = client.create_message(trip_id, content=payload.content, role="user")
+    except OdysseyAPIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {
+        "provider": "odyssey",
+        "trip_id": trip_id,
+        "message": result,
+    }

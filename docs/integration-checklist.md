@@ -57,3 +57,18 @@ Free-friendly options:
 Temporary sharing option:
 
 - Cloudflare Tunnel for a local backend
+
+## 7. Hosted Odyssey API
+
+Odyssey already exposes:
+
+- `GET /api/trips/{tripId}/messages`
+- `GET /api/trips/{tripId}/messages?last=true`
+- `POST /api/trips/{tripId}/messages`
+
+This repo now supports an optional bridge to that hosted API using:
+
+- `ODYSSEY_BASE_URL`
+- `ODYSSEY_API_KEY`
+
+Do not commit real bearer keys into the repo.

@@ -52,6 +52,8 @@ http://127.0.0.1:8000/docs
 - `TEMPORAL_ADDRESS`
 - `TEMPORAL_NAMESPACE`
 - `TEMPORAL_TASK_QUEUE`
+- `ODYSSEY_BASE_URL`
+- `ODYSSEY_API_KEY`
 
 ## Contracts and setup
 
@@ -64,3 +66,4 @@ http://127.0.0.1:8000/docs
 
 - Odyssey UI can keep using Supabase for trip CRUD if that is already live.
 - The trip chat/assistant should call this API.
+- If needed, this API can also proxy the hosted Odyssey trip-message endpoints.

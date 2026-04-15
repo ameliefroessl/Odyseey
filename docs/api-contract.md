@@ -158,3 +158,28 @@ Response shape:
 5. UI renders:
    - `assistant_message`
    - optionally `tool_messages` in a debug panel
+
+## Optional Odyssey bridge
+
+If you want this backend to talk to the hosted Odyssey API directly, configure:
+
+- `ODYSSEY_BASE_URL`
+- `ODYSSEY_API_KEY`
+
+Then these proxy endpoints are available:
+
+### `GET /api/integrations/odyssey/trips/:trip_id/messages`
+
+Optional query:
+
+- `last=true`
+
+### `POST /api/integrations/odyssey/trips/:trip_id/messages`
+
+Request body:
+
+```json
+{
+  "content": "What restaurants should we try?"
+}
+```
