@@ -168,11 +168,14 @@ If you want this backend to talk to the hosted Odyssey API directly, configure:
 
 Then these proxy endpoints are available:
 
+### `GET /api/integrations/odyssey/trips`
+
 ### `GET /api/integrations/odyssey/trips/:trip_id/messages`
 
 Optional query:
 
 - `last=true`
+- `limit=1..200`
 
 ### `POST /api/integrations/odyssey/trips/:trip_id/messages`
 

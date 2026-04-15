@@ -22,8 +22,19 @@ class OdysseyClient:
             "Content-Type": "application/json",
         }
 
-    def list_messages(self, trip_id: str, *, last: bool = False) -> Any:
-        query = "?last=true" if last else ""
+    def list_trips(self) -> Any:
+        return self._request(
+            "GET",
+            "/api/trips",
+        )
+
+    def list_messages(self, trip_id: str, *, last: bool = False, limit: int | None = None) -> Any:
+        query_params = []
+        if last:
+            query_params.append(("last", "true"))
+        if limit is not None:
+            query_params.append(("limit", str(limit)))
+        query = f"?{parse.urlencode(query_params)}" if query_params else ""
         return self._request(
             "GET",
             f"/api/trips/{parse.quote(trip_id)}/messages{query}",

@@ -119,18 +119,36 @@ def send_message(trip_id: str, payload: SendMessageRequest) -> SendMessageRespon
     )
 
 
-@app.get("/api/integrations/odyssey/trips/{trip_id}/messages")
-def odyssey_messages(trip_id: str, last: bool = Query(default=False)) -> dict[str, object]:
+@app.get("/api/integrations/odyssey/trips")
+def odyssey_trips() -> dict[str, object]:
     try:
         client = create_odyssey_client()
-        messages = client.list_messages(trip_id, last=last)
+        trips = client.list_trips()
+    except OdysseyAPIError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {
+        "provider": "odyssey",
+        "trips": trips,
+    }
+
+
+@app.get("/api/integrations/odyssey/trips/{trip_id}/messages")
+def odyssey_messages(
+    trip_id: str,
+    last: bool = Query(default=False),
+    limit: int | None = Query(default=None, ge=1, le=200),
+) -> dict[str, object]:
+    try:
+        client = create_odyssey_client()
+        messages = client.list_messages(trip_id, last=last, limit=limit)
     except OdysseyAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {
         "provider": "odyssey",
         "trip_id": trip_id,
         "last": last,
-        "messages": messages,
+        "limit": limit,
+        "response": messages,
     }
 
 

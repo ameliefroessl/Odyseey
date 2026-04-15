@@ -23,8 +23,16 @@ if [[ -n "$TRIP_ID" ]]; then
     exit 0
   fi
 
+  echo "==> Checking Odyssey bridge trip listing"
+  curl -fsS "$BASE_URL/api/integrations/odyssey/trips"
+  echo
+
   echo "==> Checking Odyssey bridge list-messages for trip: $TRIP_ID"
   curl -fsS "$BASE_URL/api/integrations/odyssey/trips/$TRIP_ID/messages?last=true"
+  echo
+
+  echo "==> Checking Odyssey bridge list-messages with explicit limit"
+  curl -fsS "$BASE_URL/api/integrations/odyssey/trips/$TRIP_ID/messages?limit=5"
   echo
 
   echo "==> Posting test user message through Odyssey bridge"

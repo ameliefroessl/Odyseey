@@ -64,7 +64,9 @@ That checks:
 
 - local API health
 - local API root endpoint
+- hosted Odyssey trip listing via the bridge
 - hosted Odyssey message fetch via the bridge
+- hosted Odyssey limited message fetch via the bridge
 - hosted Odyssey test message post via the bridge
 
 ## Environment variables
