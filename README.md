@@ -111,14 +111,23 @@ That checks:
 - The trip chat/assistant should call this API.
 - If needed, this API can also proxy the hosted Odyssey trip-message endpoints.
 
-## Polling pattern
+## Chat response modes
 
-The local trip API is polling-friendly:
+The local trip API now responds immediately by default:
 
 1. `POST /api/trips/{trip_id}/messages`
-2. backend stores the user message and returns `202 Accepted`
-3. UI polls `GET /api/trips/{trip_id}/messages?last=true`
-4. when the latest assistant message appears, UI updates the chat
+2. backend stores the user message
+3. backend runs the agent in the same request
+4. response includes `assistant_message` and `tool_messages`
+
+If you want the old polling flow instead, call:
+
+- `POST /api/trips/{trip_id}/messages?wait=false`
+
+Then the backend returns `202 Accepted` and the UI can poll:
+
+- `GET /api/trips/{trip_id}/messages?last=true`
+- or `GET /api/trips/{trip_id}/messages?limit=20`
 
 ## Fast Demo
 

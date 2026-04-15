@@ -67,6 +67,8 @@ class MessageAcceptedResponse(BaseModel):
     user_message: TripMessage
     status: str = "queued"
     poll_path: str
+    assistant_message: TripMessage | None = None
+    tool_messages: list[TripMessage] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

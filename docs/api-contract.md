@@ -141,7 +141,74 @@ Response shape:
     "created_at": "2026-04-15T18:41:00Z"
   },
   "status": "queued",
-  "poll_path": "/api/trips/trip_123/messages?last=true"
+  "poll_path": "/api/trips/trip_123/messages?last=true",
+  "assistant_message": null,
+  "tool_messages": []
+}
+```
+
+Default behavior is now synchronous:
+
+- `POST /api/trips/{trip_id}/messages`
+- returns `200 OK`
+- includes `assistant_message` and `tool_messages`
+
+Optional async mode:
+
+- `POST /api/trips/{trip_id}/messages?wait=false`
+- returns `202 Accepted`
+- UI can poll `GET /api/trips/{trip_id}/messages?last=true`
+
+Example synchronous response:
+
+```json
+{
+  "trip": {
+    "id": "trip_123",
+    "title": "Tokyo Spring Trip",
+    "destination": "Tokyo",
+    "start_date": "2026-03-10",
+    "end_date": "2026-03-15",
+    "status": "planning",
+    "created_at": "2026-04-15T18:40:00Z",
+    "updated_at": "2026-04-15T18:42:11Z"
+  },
+  "user_message": {
+    "id": "msg_user",
+    "trip_id": "trip_123",
+    "role": "user",
+    "content": "I am flying from San Francisco and want food and shopping.",
+    "tool_name": null,
+    "tool_call_id": null,
+    "metadata": {},
+    "created_at": "2026-04-15T18:41:00Z"
+  },
+  "status": "completed",
+  "poll_path": "/api/trips/trip_123/messages?last=true",
+  "assistant_message": {
+    "id": "msg_assistant",
+    "trip_id": "trip_123",
+    "role": "assistant",
+    "content": "I pulled together a first pass for Tokyo...",
+    "tool_name": null,
+    "tool_call_id": null,
+    "metadata": {},
+    "created_at": "2026-04-15T18:41:01Z"
+  },
+  "tool_messages": [
+    {
+      "id": "msg_tool_1",
+      "trip_id": "trip_123",
+      "role": "tool",
+      "content": "{\"origin\":\"San Francisco\",\"destination\":\"Tokyo\"}",
+      "tool_name": "search_flights",
+      "tool_call_id": "mock-flight-call",
+      "metadata": {
+        "mock": true
+      },
+      "created_at": "2026-04-15T18:41:00Z"
+    }
+  ]
 }
 ```
 
@@ -149,10 +216,10 @@ Response shape:
 
 1. UI creates or loads a trip.
 2. UI opens the trip page.
-3. UI calls `GET /api/trips/{trip_id}/messages`.
+3. UI calls `GET /api/trips/{trip_id}/messages?limit=20`.
 4. On send, UI calls `POST /api/trips/{trip_id}/messages`.
-5. UI polls `GET /api/trips/{trip_id}/messages?last=true`.
-6. When a new assistant message appears, UI stops polling.
+5. UI renders `assistant_message` from the same response immediately.
+6. Only use polling if you explicitly choose `?wait=false`.
 
 ## Optional Odyssey bridge
 

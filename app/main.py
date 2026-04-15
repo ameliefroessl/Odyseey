@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .agent import generate_reply
@@ -87,11 +87,13 @@ def list_messages(
     return MessageListResponse(messages=messages, last_message=last_message)
 
 
-@app.post("/api/trips/{trip_id}/messages", response_model=MessageAcceptedResponse, status_code=202)
+@app.post("/api/trips/{trip_id}/messages", response_model=MessageAcceptedResponse)
 def send_message(
     trip_id: str,
     payload: SendMessageRequest,
     background_tasks: BackgroundTasks,
+    response: Response,
+    wait: bool = Query(default=True),
 ) -> MessageAcceptedResponse:
     trip = storage.get_trip(trip_id)
     if trip is None:
@@ -104,15 +106,31 @@ def send_message(
         metadata={"persona": payload.persona} if payload.persona else {},
     )
 
-    if payload.role == "user":
+    assistant_message = None
+    tool_messages = []
+
+    if payload.role == "user" and wait:
+        tool_messages, assistant_message = run_agent_turn(trip_id)
+    elif payload.role == "user":
+        response.status_code = 202
         background_tasks.add_task(process_agent_turn, trip_id)
+    else:
+        response.status_code = 200
 
     refreshed_trip = storage.get_trip(trip_id) or trip
     return MessageAcceptedResponse(
         trip=refreshed_trip,
         user_message=user_message,
-        status="queued" if payload.role == "user" else "stored",
+        status=(
+            "completed"
+            if payload.role == "user" and wait
+            else "queued"
+            if payload.role == "user"
+            else "stored"
+        ),
         poll_path=f"/api/trips/{trip_id}/messages?last=true",
+        assistant_message=assistant_message,
+        tool_messages=tool_messages,
     )
 
 
@@ -168,36 +186,45 @@ def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str,
 
 
 def process_agent_turn(trip_id: str) -> None:
+    run_agent_turn(trip_id)
+
+
+def run_agent_turn(trip_id: str) -> tuple[list, object | None]:
     trip = storage.get_trip(trip_id)
     if trip is None:
-        return
+        return [], None
 
     try:
         history = storage.list_messages(trip_id)
         agent_result = generate_reply(trip, history)
+        created_tool_messages = []
 
         for item in agent_result["tool_messages"]:
-            storage.create_message(
-                trip_id=trip_id,
-                role="tool",
-                content=item["content"],
-                tool_name=item["tool_name"],
-                tool_call_id=item["tool_call_id"],
-                metadata=item.get("metadata", {}),
+            created_tool_messages.append(
+                storage.create_message(
+                    trip_id=trip_id,
+                    role="tool",
+                    content=item["content"],
+                    tool_name=item["tool_name"],
+                    tool_call_id=item["tool_call_id"],
+                    metadata=item.get("metadata", {}),
+                )
             )
 
-        storage.create_message(
+        assistant_message = storage.create_message(
             trip_id=trip_id,
             role="assistant",
             content=agent_result["assistant_text"],
         )
+        return created_tool_messages, assistant_message
     except Exception as exc:
-        storage.create_message(
+        assistant_message = storage.create_message(
             trip_id=trip_id,
             role="assistant",
             content="I hit an error while processing that request. Please try again.",
             metadata={"error": True, "detail": str(exc)},
         )
+        return [], assistant_message
 
 
 def _format_outbound_content(payload: SendMessageRequest) -> str:
