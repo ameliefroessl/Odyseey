@@ -54,6 +54,12 @@ export TRIP_ID=your_trip_id
 bash scripts/check_connection.sh
 ```
 
+The script also accepts the alias some teammates are using:
+
+```bash
+export ODYSSEY_KEY=your_key_here
+```
+
 That checks:
 
 - local API health
@@ -78,6 +84,7 @@ That checks:
 - `TEMPORAL_TASK_QUEUE`
 - `ODYSSEY_BASE_URL`
 - `ODYSSEY_API_KEY`
+- `ODYSSEY_KEY` as an optional alias
 
 ## Contracts and setup
 

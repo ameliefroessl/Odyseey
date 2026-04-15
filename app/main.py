@@ -85,7 +85,7 @@ def send_message(trip_id: str, payload: SendMessageRequest) -> SendMessageRespon
 
     user_message = storage.create_message(
         trip_id=trip_id,
-        role="user",
+        role=payload.role,
         content=payload.content,
     )
 
@@ -138,7 +138,7 @@ def odyssey_messages(trip_id: str, last: bool = Query(default=False)) -> dict[st
 def odyssey_post_message(trip_id: str, payload: SendMessageRequest) -> dict[str, object]:
     try:
         client = create_odyssey_client()
-        result = client.create_message(trip_id, content=payload.content, role="user")
+        result = client.create_message(trip_id, content=payload.content, role=payload.role)
     except OdysseyAPIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return {

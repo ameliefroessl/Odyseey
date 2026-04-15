@@ -57,6 +57,7 @@ class MessageListResponse(BaseModel):
 
 class SendMessageRequest(BaseModel):
     content: str = Field(min_length=1, max_length=5000)
+    role: MessageRole = "user"
 
 
 class SendMessageResponse(BaseModel):
