@@ -37,6 +37,30 @@ HOST=127.0.0.1 PORT=8000 .venv/bin/python -m app.server
 http://127.0.0.1:8000/docs
 ```
 
+## Connection check
+
+After the API is running, you can smoke-test it with:
+
+```bash
+cd "/Users/eltsit/Documents/New project/Odyseey"
+bash scripts/check_connection.sh
+```
+
+If you also want to test the hosted Odyssey bridge, set:
+
+```bash
+export ODYSSEY_API_KEY=your_key_here
+export TRIP_ID=your_trip_id
+bash scripts/check_connection.sh
+```
+
+That checks:
+
+- local API health
+- local API root endpoint
+- hosted Odyssey message fetch via the bridge
+- hosted Odyssey test message post via the bridge
+
 ## Environment variables
 
 - `HOST` defaults to `0.0.0.0`
