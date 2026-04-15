@@ -20,6 +20,9 @@ class OdysseyClient:
         self.headers = {
             "Authorization": f"Bearer {settings.odyssey_api_key}",
             "Content-Type": "application/json",
+            "Accept": "application/json, text/plain, */*",
+            # Cloudflare rejects the default Python urllib user agent on this API.
+            "User-Agent": "curl/8.7.1",
         }
 
     def list_trips(self) -> Any:

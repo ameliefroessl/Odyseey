@@ -120,6 +120,26 @@ The local trip API is polling-friendly:
 3. UI polls `GET /api/trips/{trip_id}/messages?last=true`
 4. when the latest assistant message appears, UI updates the chat
 
+## Fast Demo
+
+For a reliable local demo:
+
+```bash
+cd "/Users/eltsit/Documents/New project/Odyseey"
+bash scripts/demo_local_flow.sh
+```
+
+That will:
+
+- create a demo trip
+- post a user message
+- show the `202 queued` response
+- poll until the assistant reply appears
+- fetch recent messages
+
+Full presenter notes are in
+[docs/demo-runbook.md](/Users/eltsit/Documents/New%20project/Odyseey/docs/demo-runbook.md:1).
+
 ## Sending Assistant Messages As Codex
 
 If you want this backend to post assistant-role messages into Odyssey on behalf
